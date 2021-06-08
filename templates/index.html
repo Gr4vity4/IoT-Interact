@@ -1,0 +1,15 @@
+<div>
+    <h1>IoT Interact It's Work!</h1>
+    <button type="button" onClick="handleON()">ON</button>
+    <button type="button" onClick="handleOFF()">OFF</button>
+</div>
+<script>
+    function handleON() {
+        console.log(`on`);
+        websocketclient.publish('@msg/pao', 'hello world from wordpress', 0, false)
+    }
+
+    function handleOFF() {
+        console.log(`off`);
+    }
+</script>
