@@ -1,0 +1,374 @@
+<div id="app">
+  <div class="container mb-8">
+    <form class="grid grid-cols-4">
+      <div class="col-span-4" v-if="alertPopup">
+        <div class="text-white px-6 py-4 border-0 rounded relative mb-4 bg-red-400">
+          <span class="text-xl inline-block mr-5 align-middle">
+            <i class="fas fa-info-circle"></i>
+          </span>
+          <span class="inline-block align-middle mr-8">
+            <b class="">Connection Error.</b>
+          </span>
+          <button type="button" class="absolute bg-transparent text-2xl font-semibold leading-none right-0 top-0 mt-3 outline-none focus:bg-red-400 focus:outline-none hover:bg-red-400 " @click="alertPopup = false">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+      </div>      
+      <div class="col-span-4 sm:col-span-4 md:col-span-4 lg:col-span-1 xl:col-span-1 px-4">
+        <label>Client ID</label>
+        <input type="text" class="text-base w-full mt-2" v-model="netpieConfig.client_id"
+          style="border-radius: 1.5rem" />
+      </div>
+      <div class="col-span-4 sm:col-span-4 md:col-span-4 lg:col-span-1 xl:col-span-1 px-4">
+        <label>Token</label>
+        <input type="text" class="text-base w-full mt-2" v-model="netpieConfig.token" style="border-radius: 1.5rem" />
+      </div>
+      <div class="col-span-4 sm:col-span-4 md:col-span-4 lg:col-span-1 xl:col-span-1 px-4">
+        <label>Secret</label>
+        <input type="password" class="text-base w-full mt-2" v-model="netpieConfig.secret"
+          style="border-radius: 1.5rem" />
+      </div>
+      <div
+        class="col-span-4 sm:col-span-4 md:col-span-4 lg:col-span-1 xl:col-span-1 px-4 flex flex-col justify-center items-center">
+        <label style="color: #ffffff">.</label>
+        <button type="button" class="rounded-full w-full bg-red-400 hover:bg-red-400 focus:bg-red-400 focus:outline-none"
+          @click="netpieConnect">
+          <i class="fab fa-connectdevelop mr-2"></i>
+          {{ mqttConnected ? 'Disconnect' : 'Connect' }}
+        </button>
+      </div>
+    </form>
+    <div class="grid grid-cols-1 mt-8 px-4" v-if="mqttConnected">
+      <div class="col-span-1">
+        <div class="flex justify-end pb-5">
+          <button type="button"
+            class="w-full rounded-full bg-green-500 hover:bg-green-500 focus:bg-green-500 focus:outline-none"
+            @click="addWidget">
+            <i class="fas fa-plus"></i>
+            Add Widget
+          </button>
+        </div>
+      </div>
+      <div class="col-span-1 mb-4" v-for="(widget, index) in widgets" :key="index">
+        <div class="border border-gray-300 rounded-2xl pt-5 pb-3 px-5">
+          <div class="flex">
+            <div class="flex items-center mr-4" style="height: 47px">
+              <img class="rounded-full"
+                src="/wp-content/plugins/iot-interact/templates/assets/icons/broadcast-v2-32.png" alt="live" />
+            </div>
+            <div>
+              <div class="flex justify-center items-center">
+                <input type="text" placeholder="@msg/topic" class="mr-3"
+                  style="border-radius: 1.5rem; padding-left: 14px; padding-right: 14px" v-model="widgets[index].topic">
+                <button type="button"
+                  :class="['rounded-full focus:outline-none', widgets[index].activeSubscript ? 'bg-green-500 hover:bg-green-500 focus:bg-green-500' : 'bg-red-400 hover:bg-red-400 focus:bg-red-400']"
+                  @click="subscribeWidget(index)">
+                  subscribe
+                </button>
+              </div>
+            </div>
+            <div class="ml-auto">
+              <i class="fas fa-times fa-lg cursor-pointer text-red-500" @click="handleCloseWidget(widget.id)"></i>
+            </div>
+          </div>
+          <div class="py-3">
+            <p class="text-xl"><span class="text-gray-400">Receive message :</span> <span
+                class="font-bold">{{ widget.payload }}</span></p>
+            <div class="flex">
+              <p class="text-gray-500 pt-1">{{ widget.timestamp }}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  var app = new Vue({
+    el: "#app",
+    data() {
+      return {
+        netpieConfig: {
+          client_id: "",
+          token: "",
+          secret: "",
+        },
+        mqttConnected: false,
+        widgets: [],
+        websocket: null,
+        alertPopup: false
+      };
+    },
+    methods: {
+      netpieConnect() {
+        if (this.netpieConfig.client_id.length > 0 && this.netpieConfig.token.length > 0 && this.netpieConfig.secret
+          .length > 0) {
+          if (this.mqttConnected) {
+            this.websocket.disconnect();
+          } else {
+            this.websocket.connect()
+          }
+        }
+      },
+      addWidget() {
+        this.widgets.push({
+          id: this.widgets.length + 1,
+          topic: '',
+          activeSubscript: false,
+          payload: '',
+          timestamp: ''
+        })
+      },
+      subscribeWidget(index) {
+        let topic = this.widgets[index].topic
+        let state = this.websocket.subscribe(topic, 0, '#000000')
+        this.widgets[index].activeSubscript = state
+        if (!state) {
+          this.websocket.unsubscribe(topic)
+        }
+      },
+      handleCloseWidget(id) {
+        let widget = this.widgets.filter(widget => widget.id == id);
+        if (widget.activeSubscript) {
+          this.websocket.unsubscribe(widget.topic)
+        }
+        this.widgets = this.widgets.filter(widget => widget.id != id)
+      },
+    },
+    mounted() {
+      let that = this
+
+      websocketclient = {
+        client: null,
+        lastMessageId: 1,
+        lastSubId: 1,
+        subscriptions: [],
+        messages: [],
+        connected: false,
+        connect: function () {
+          var host = "mqtt.netpie.io";
+          var port = 443;
+          var clientId = that.netpieConfig.client_id;
+          var username = that.netpieConfig.token;
+          var password = that.netpieConfig.secret;
+          var keepAlive = 60;
+          var cleanSession = true;
+          var lwTopic = "";
+          var lwQos = 0;
+          var lwRetain = false;
+          var lwMessage = "";
+          var ssl = true;
+
+          this.client = new Messaging.Client(host, port, clientId);
+          this.client.onConnectionLost = this.onConnectionLost;
+          this.client.onMessageArrived = this.onMessageArrived;
+
+          var options = {
+            timeout: 3,
+            keepAliveInterval: keepAlive,
+            cleanSession: cleanSession,
+            useSSL: ssl,
+            onSuccess: this.onConnect,
+            onFailure: this.onFail,
+          };
+
+          if (username.length > 0) {
+            options.userName = username;
+          }
+          if (password.length > 0) {
+            options.password = password;
+          }
+          if (lwTopic.length > 0) {
+            var willmsg = new Messaging.Message(lwMessage);
+            willmsg.qos = lwQos;
+            willmsg.destinationName = lwTopic;
+            willmsg.retained = lwRetain;
+            options.willMessage = willmsg;
+          }
+
+          this.client.connect(options);
+        },
+        onConnect: function () {
+          websocketclient.connected = true;
+          that.mqttConnected = true;
+          console.log("connected");
+          // save config to database
+
+          fetch('/wp-json/netpie/v1/save', {
+              method: 'POST',
+              body: JSON.stringify({
+                ...that.netpieConfig
+              })
+            })
+            .then((r) => r.json())
+            .then((res) => console.log(res));
+        },
+        onFail: function (message) {
+          websocketclient.connected = false;
+          console.log("error: " + message.errorMessage);
+          that.alertPopup = true;
+        },
+        onConnectionLost: function (responseObject) {
+          websocketclient.connected = false;
+          if (responseObject.errorCode !== 0) {
+            console.log("onConnectionLost:" + responseObject.errorMessage);
+          }
+        },
+        onMessageArrived: function (message) {
+          //        console.log("onMessageArrived:" + message.payloadString + " qos: " + message.qos);
+          var subscription = websocketclient.getSubscriptionForTopic(message.destinationName);
+          var messageObj = {
+            topic: message.destinationName,
+            retained: message.retained,
+            qos: message.qos,
+            payload: message.payloadString,
+            timestamp: moment(),
+            subscriptionId: subscription.id,
+            color: websocketclient.getColorForSubscription(subscription.id),
+          };
+          console.log(messageObj);
+
+          that.widgets.forEach((widget, index) => {
+            if (widget.topic == messageObj.topic) {
+              that.widgets[index].payload = messageObj.payload
+              that.widgets[index].timestamp = messageObj.timestamp
+            }
+          })
+        },
+        disconnect: function () {
+          this.client.disconnect();
+          that.mqttConnected = false;
+        },
+        publish: function (topic, payload, qos, retain) {
+          if (!websocketclient.connected) {
+            return false;
+          }
+          var message = new Messaging.Message(payload);
+          message.destinationName = topic;
+          message.qos = qos;
+          message.retained = retain;
+          this.client.send(message);
+        },
+        subscribe: function (topic, qosNr, color) {
+          if (!that.mqttConnected) {
+            return false;
+          }
+          if (topic.length < 1) {
+            return false;
+          }
+          if (_.find(this.subscriptions, {
+              topic: topic
+            })) {
+            return false;
+          }
+          this.client.subscribe(topic, {
+            qos: qosNr
+          });
+          if (color.length < 1) {
+            color = "999999";
+          }
+          var subscription = {
+            topic: topic,
+            qos: qosNr,
+            color: color
+          };
+          this.subscriptions.push(subscription);
+          return true;
+        },
+        unsubscribe: function (topic) {
+          // console.log(`>>> unsubscribe ${topic}`)
+          that.websocket.subscriptions = that.websocket.subscriptions.filter(item => item.topic != topic)
+        },
+        deleteSubscription: function (id) {
+          var elem = $("#sub" + id);
+
+          if (confirm("Are you sure ?")) {
+            elem.remove();
+            this.unsubscribe(id);
+          }
+        },
+        getRandomColor: function () {
+          var r = Math.round(Math.random() * 255).toString(16);
+          var g = Math.round(Math.random() * 255).toString(16);
+          var b = Math.round(Math.random() * 255).toString(16);
+          return r + g + b;
+        },
+        getSubscriptionForTopic: function (topic) {
+          var i;
+          for (i = 0; i < this.subscriptions.length; i++) {
+            if (this.compareTopics(topic, this.subscriptions[i].topic)) {
+              return this.subscriptions[i];
+            }
+          }
+          return false;
+        },
+        getColorForPublishTopic: function (topic) {
+          var id = this.getSubscriptionForTopic(topic);
+          return this.getColorForSubscription(id);
+        },
+        getColorForSubscription: function (id) {
+          try {
+            if (!id) {
+              return "99999";
+            }
+
+            var sub = _.find(this.subscriptions, {
+              id: id
+            });
+            if (!sub) {
+              return "999999";
+            } else {
+              return sub.color;
+            }
+          } catch (e) {
+            return "999999";
+          }
+        },
+        compareTopics: function (topic, subTopic) {
+          var pattern = subTopic.replace("+", "(.*?)").replace("#", "(.*)");
+          var regex = new RegExp("^" + pattern + "$");
+          return regex.test(topic);
+        },
+      }
+
+      this.websocket = websocketclient;
+
+      fetch('/wp-json/netpie/v1/load', {
+          method: 'GET'
+        })
+        .then((r) => r.json())
+        .then((res) => {
+          let data = JSON.parse(res);
+          that.netpieConfig = {
+            client_id: data.client_id[0],
+            token: data.token[0],
+            secret: data.secret[0],
+          }
+        });
+    }
+  });
+</script>
+<style>
+  .dot {
+    height: 25px;
+    width: 25px;
+    border-radius: 50%;
+    display: inline-block;
+  }
+
+  .text-blue-500 {
+    --tw-text-opacity: 1;
+    color: rgba(14, 165, 233, var(--tw-text-opacity));
+  }
+
+  .border-gray-300 {
+    --tw-border-opacity: 1;
+    border-color: rgba(209, 213, 219, var(--tw-border-opacity));
+  }
+
+  .text-gray-500 {
+    --tw-text-opacity: 1;
+    color: rgba(107, 114, 128, var(--tw-text-opacity));
+  }
+</style>

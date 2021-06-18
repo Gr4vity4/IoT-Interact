@@ -1,8 +1,4 @@
 <?php
-
-use Carbon_Fields\Container;
-use Carbon_Fields\Field;
-
 /**
  * @package IoT_Interact
  * @version 1.0.0
@@ -14,51 +10,77 @@ Author: Prawared Bowonphattharawadi
 Version: 1.0.0
 */
 
-function iotInteractButton()
-{
-    echo file_get_contents("wp-content/plugins/iot-interact/templates/index.html");
-}
-
-function iotInteractSettingPage()
-{
-    echo '<div style="margin-top: 20px"><h2>IoT Interact Settings</h2></div>';
-}
-
-function iot_interact_plugin_settings_page()
-{
-    Container::make('theme_options', __('IoT Interact'))
-        ->set_page_parent('options-general.php')
-        ->add_fields(array(
-            Field::make('html', 'crb_html', __('Section Description'))
-                ->set_html(sprintf('<p>Here you can set all the options for using the NETPIE</p>', __('Here, you can add some useful description for the fields below / above this text.'))),
-            Field::make('text', 'iot_interact_clientid', 'Client ID')
-                ->set_attribute('maxLength', 50),
-            Field::make('text', 'iot_interact_token', 'Token')
-                ->set_attribute('maxLength', 50),
-            Field::make('text', 'iot_interact_secret', 'Secret')
-                ->set_attribute('maxLength', 50)
-                ->set_attribute('type', 'password'),
-        ));
-}
-
-function callbackMQTTConfig()
-{
-    return array(
-        'clientid' => get_option('_iot_interact_clientid'),
-        'token' => get_option('_iot_interact_token'),
-        'secret' => get_option('_iot_interact_secret')
-    );
-}
-
 // REST API
-add_action('rest_api_init', function () {
-    register_rest_route('iot-interact/v1', '/mqtt-config', array(
+function  save_netpie_endpoint(WP_REST_Request $req) {
+    global $user_id;
+    $body = $req->get_body();
+    $body = json_decode($body, true);
+    
+    if (!get_user_meta($user_id, 'netpie_client_id')) {
+        // write new user_meta
+        add_user_meta($user_id, 'netpie_client_id', $body['client_id'], true);
+        add_user_meta($user_id, 'netpie_token', $body['token'], true);
+        add_user_meta($user_id, 'netpie_secret', $body['secret'], true);
+    } else {
+        // update user_meta
+        update_user_meta($user_id, 'netpie_client_id', $body['client_id'], true);
+        update_user_meta($user_id, 'netpie_token', $body['token'], true);
+        update_user_meta($user_id, 'netpie_secret', $body['secret'], true);
+    }
+    
+    return rest_ensure_response( 'save netpie config successfully.' );
+}
+
+function  load_netpie_endpoint() {
+    global $user_id;
+    $config = array(
+        'client_id' => get_user_meta($user_id, 'netpie_client_id'),
+        'token' => get_user_meta($user_id, 'netpie_token'),
+        'secret' => get_user_meta($user_id, 'netpie_secret')
+    );
+    
+    return rest_ensure_response(json_encode($config));
+}
+
+function pluginInit(){
+    global $user_id;
+    $user_id = get_current_user_id();
+}
+
+add_action('init', 'pluginInit');
+    
+add_action( 'rest_api_init', function () {
+    register_rest_route( 'netpie/v1', '/save/', array(
+        'methods' => 'POST',
+        'callback' => 'save_netpie_endpoint'
+    ));
+    register_rest_route( 'netpie/v1', '/load/', array(
         'methods' => 'GET',
-        'callback' => 'callbackMQTTConfig',
+        'callback' => 'load_netpie_endpoint'
     ));
 });
 
+wp_enqueue_style('tailwind', plugin_dir_url(__FILE__) . './templates/assets/css/tailwind.css');
+wp_enqueue_style('fontawesome', 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css');
 wp_enqueue_script('paho_mqtt', plugin_dir_url(__FILE__) . './mqtt/mqttws31.js');
-wp_enqueue_script('query_mqtt', plugin_dir_url(__FILE__) . './mqtt/index.js');
-add_shortcode('iot_interact_button', 'iotInteractButton');
-add_action('carbon_fields_register_fields', 'iot_interact_plugin_settings_page');
+wp_enqueue_script('moment', 'https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.1/moment.min.js');
+wp_enqueue_script('vue', 'https://cdnjs.cloudflare.com/ajax/libs/vue/2.6.14/vue.min.js');
+
+add_filter('woocommerce_account_menu_items', 'iot_interact_dashboard_account_link', 40);
+function iot_interact_dashboard_account_link($menu_links)
+{
+    $menu_links = array_slice($menu_links, 0, 0, true)
+        + array('iot-interact-dashboard' => 'NETPIE')
+        + array_slice($menu_links, 0, NULL, true);
+
+    return $menu_links;
+}
+
+
+function iot_interact_my_account_endpoint_content()
+{
+    echo file_get_contents("wp-content/plugins/iot-interact/templates/dashboard.html");
+}
+
+add_action('woocommerce_account_iot-interact-dashboard_endpoint', 'iot_interact_my_account_endpoint_content');
+
