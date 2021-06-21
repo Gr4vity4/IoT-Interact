@@ -4,8 +4,8 @@
  * @version 1.0.0
  */
 /*
-Plugin Name: IoT Interact
-Description: Powerful interact internet of things with user!
+Plugin Name: WP NETPIE
+Description: Powerful MQTT connectivity protocol.
 Author: Prawared Bowonphattharawadi
 Version: 1.0.0
 */
