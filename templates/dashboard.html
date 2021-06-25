@@ -50,8 +50,24 @@
         <div>
           <h3>Publish</h3>
         </div>
+        <div>
+          <svg v-if="displayPublish" @click="displayPublishToggle" width="32" xmlns="http://www.w3.org/2000/svg"
+            class="h-5 w-5 tc-hover:bg-green-100 tc-rounded-full tc-cursor-pointer" viewBox="0 0 20 20"
+            fill="currentColor">
+            <path fill-rule="evenodd"
+              d="M14.707 12.707a1 1 0 01-1.414 0L10 9.414l-3.293 3.293a1 1 0 01-1.414-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 010 1.414z"
+              clip-rule="evenodd" />
+          </svg>
+          <svg v-else @click="displayPublishToggle" width="32" xmlns="http://www.w3.org/2000/svg"
+            class="h-5 w-5 tc-hover:bg-green-100 tc-rounded-full tc-cursor-pointer" viewBox="0 0 20 20"
+            fill="currentColor">
+            <path fill-rule="evenodd"
+              d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
+              clip-rule="evenodd" />
+          </svg>
+        </div>
       </div>
-      <div
+      <div v-if="displayPublish"
         class="tc-grid tc-grid-cols-6 tc-mb-4 tc-border tc-border-gray-300 tc-rounded-2xl tc-pt-5 tc-pb-3 tc-px-5 tc-bg-white">
         <div class="tc-col-span-6 tc-sm:col-span-6 tc-md:col-span-6 tc-lg:col-span-6 tc-xl:col-span-6 tc-mb-4">
           <div class="tc-flex tc-justify-center tc-items-center">
@@ -164,7 +180,8 @@
           topic: '',
           payload: '',
           timestamp: ''
-        }
+        },
+        displayPublish: true,
       };
     },
     methods: {
@@ -202,6 +219,9 @@
       publish() {
         console.log(`publish`)
         this.websocket.publish(this.pub.topic, this.pub.payload, 0, false)
+      },
+      displayPublishToggle() {
+        this.displayPublish = !this.displayPublish
       },
       handleCloseWidget(id) {
         let widget = this.widgets.filter(widget => widget.id == id);
@@ -318,7 +338,7 @@
         },
         publish: function (topic, payload, qos, retain) {
           if (topic.length < 1) {
-            that.alertMessage = `Publish topic can't be left empty.`;
+            that.alertMessage = `Topic can't be left empty.`;
             that.alertPopup = true;
             return false;
           }
