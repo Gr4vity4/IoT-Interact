@@ -44,17 +44,66 @@
         </button>
       </div>
     </form>
-    <div class="tc-grid tc-grid-cols-1 tc-mt-8 tc-px-4" v-if="mqttConnected">
-      <div class="tc-col-span-1">
-        <div class="tc-flex tc-justify-end tc-pb-5">
-          <button type="button"
-            class="tc-w-full tc-rounded-full tc-bg-green-500 tc-hover:bg-green-500 tc-focus:bg-green-500 tc-focus:outline-none"
-            @click="addWidget">
-            Add Widget
-          </button>
+
+    <div class="tc-grid tc-grid-cols-1 tc-mt-8 tc-px-4 tc-pt-4 tc-bg-gray-100 tc-rounded-2xl" v-if="mqttConnected">
+      <div class="tc-col-span-1 tc-flex tc-justify-between tc-pb-5">
+        <div>
+          <h3>Publish</h3>
         </div>
       </div>
-      <div class="tc-grid tc-grid-cols-6 tc-mb-4 tc-border tc-border-gray-300 tc-rounded-2xl tc-pt-5 tc-pb-3 tc-px-5"
+      <div
+        class="tc-grid tc-grid-cols-6 tc-mb-4 tc-border tc-border-gray-300 tc-rounded-2xl tc-pt-5 tc-pb-3 tc-px-5 tc-bg-white">
+        <div class="tc-col-span-6 tc-sm:col-span-6 tc-md:col-span-6 tc-lg:col-span-6 tc-xl:col-span-6 tc-mb-4">
+          <div class="tc-flex tc-justify-center tc-items-center">
+            <span class="tc-whitespace-nowrap tc-font-bold">Topic&ensp;</span>
+            <input type="text" placeholder="@msg/topic" class="tc-w-full"
+              style="border-radius: 1.5rem; padding-left: 14px; padding-right: 14px" v-model="pub.topic">
+          </div>
+        </div>
+        <div class="tc-col-span-6 tc-sm:col-span-6 tc-md:col-span-6 tc-lg:col-span-5 tc-xl:col-span-5 tc-mb-4">
+          <div class="tc-flex tc-justify-center tc-items-center">
+            <span class="tc-whitespace-nowrap tc-font-bold">Message&ensp;</span>
+            <input type="text" placeholder="" class="tc-w-full"
+              style="border-radius: 1.5rem; padding-left: 14px; padding-right: 14px" v-model="pub.payload">
+          </div>
+        </div>
+        <div class="tc-col-span-6 tc-sm:col-span-6 tc-md:col-span-6 tc-lg:col-span-1 tc-mb-4">
+          <div class="tc-flex tc-justify-center">
+            <button type="button"
+              class="tc-rounded-full tc-focus:outline-none tc-ml-4 tc-bg-green-500 tc-hover:bg-green-500 tc-focus:bg-green-500"
+              @click="publish">
+              Publish
+            </button>
+          </div>
+        </div>
+        <div class="tc-col-span-6 tc-sm:col-span-6">
+          <div class="tc-py-3">
+            <p class="tc-text-xl"><span class="tc-text-gray-400">Publish message / {{ pub.timestamp }}</span></p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="tc-grid tc-grid-cols-1 tc-mt-8 tc-px-4 tc-pt-4 tc-bg-gray-100 tc-rounded-2xl" v-if="mqttConnected">
+      <div class="tc-col-span-1 tc-flex tc-justify-between tc-pb-5">
+        <div>
+          <h3>Subscribe</h3>
+        </div>
+        <div>
+          <div
+            class="tc-flex tc-justify-center tc-items-center tc-w-full tc-rounded-full tc-bg-green-500 tc-hover:bg-green-500 tc-focus:bg-green-500 tc-focus:outline-none tc-text-white tc-px-3 tc-py-2 tc-cursor-pointer"
+            @click="addWidget">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+              <path fill-rule="evenodd"
+                d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z"
+                clip-rule="evenodd" />
+            </svg>
+            <span class="tc-pr-2">Add subscriber</span>
+          </div>
+        </div>
+      </div>
+      <div
+        class="tc-grid tc-grid-cols-6 tc-mb-4 tc-border tc-border-gray-300 tc-rounded-2xl tc-pt-5 tc-pb-3 tc-px-5 tc-bg-white"
         v-for="(widget, index) in widgets" :key="index">
         <!-- begin fields -->
         <div class="tc-col-span-6 tc-sm:col-span-6 tc-md:col-span-3 tc-lg:col-span-3 tc-xl:col-span-3 tc-mb-4">
@@ -86,7 +135,7 @@
             <p class="tc-text-xl"><span class="tc-text-gray-400">Receive message :</span> <span
                 class="tc-font-bold">{{ widget.payload }}</span></p>
             <div class="tc-flex">
-              <p class="tc-text-gray-500 tc-pt-1">{{ widget.timestamp }}</p>
+              <p class="tc-text-gray-400 tc-pt-1">{{ widget.timestamp }}</p>
             </div>
           </div>
         </div>
@@ -110,7 +159,12 @@
         widgets: [],
         websocket: null,
         alertPopup: false,
-        alertMessage: ''
+        alertMessage: '',
+        pub: {
+          topic: '',
+          payload: '',
+          timestamp: ''
+        }
       };
     },
     methods: {
@@ -144,6 +198,10 @@
         if (!state) {
           this.websocket.unsubscribe(topic)
         }
+      },
+      publish() {
+        console.log(`publish`)
+        this.websocket.publish(this.pub.topic, this.pub.payload, 0, false)
       },
       handleCloseWidget(id) {
         let widget = this.widgets.filter(widget => widget.id == id);
@@ -250,7 +308,7 @@
           that.widgets.forEach((widget, index) => {
             if (widget.topic == messageObj.topic) {
               that.widgets[index].payload = messageObj.payload
-              that.widgets[index].timestamp = messageObj.timestamp
+              that.widgets[index].timestamp = moment(messageObj.timestamp).format('MMMM Do YYYY, h:mm:ss a')
             }
           })
         },
@@ -259,6 +317,12 @@
           that.mqttConnected = false;
         },
         publish: function (topic, payload, qos, retain) {
+          if (topic.length < 1) {
+            that.alertMessage = `Publish topic can't be left empty.`;
+            that.alertPopup = true;
+            return false;
+          }
+
           if (!websocketclient.connected) {
             return false;
           }
@@ -267,6 +331,7 @@
           message.qos = qos;
           message.retained = retain;
           this.client.send(message);
+          that.pub.timestamp = moment().format('MMMM Do YYYY, h:mm:ss a');
         },
         subscribe: function (topic, qosNr, color) {
           if (!that.mqttConnected) {
