@@ -1,13 +1,13 @@
 <?php
 /**
- * @package IoT_Interact
- * @version 1.0.0
+ * @package WP NETPIE
+ * @version 1.1.0
  */
 /*
 Plugin Name: WP NETPIE
 Description: Powerful MQTT connectivity protocol.
 Author: Prawared Bowonphattharawadi
-Version: 1.0.0
+Version: 1.1.0
 */
 
 // REST API
