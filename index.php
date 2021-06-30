@@ -61,10 +61,10 @@ add_action( 'rest_api_init', function () {
 });
 
 wp_enqueue_style('tailwind', '/wp-content/plugins/wp-netpie-plugin/templates/assets/css/style.min.css');
-wp_enqueue_script('paho_mqtt', '/wp-content/plugins/wp-netpie-plugin/mqtt/mqttws31.js');
-wp_enqueue_script('moment', 'https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.1/moment.min.js');
-wp_enqueue_script('chartjs', 'https://cdn.jsdelivr.net/npm/chart.js');
-wp_enqueue_script('vue', 'https://cdnjs.cloudflare.com/ajax/libs/vue/2.6.14/vue.min.js');
+wp_enqueue_script('paho_mqtt', '/wp-content/plugins/wp-netpie-plugin/templates/assets/js/mqtt/mqttws31.js');
+wp_enqueue_script('moment', '/wp-content/plugins/wp-netpie-plugin/templates/assets/js/moment.min.js');
+wp_enqueue_script('chartjs', '/wp-content/plugins/wp-netpie-plugin/templates/assets/js/chart.min.js');
+wp_enqueue_script('vue', '/wp-content/plugins/wp-netpie-plugin/templates/assets/js/vue.min.js');
 
 function netpie_dashboard_account_link($menu_links)
 {
