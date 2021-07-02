@@ -108,8 +108,9 @@
             <select v-model="widget.widgetType" @change="onChangeWidgetType(index)" class="tc-rounded-full">
               <option value="message">message</option>
               <option value="chart">chart</option>
+              <option value="gauge">gauge</option>
             </select>
-            <div v-if="widget.widgetType == 'chart'" class="tc-flex tc-items-center tc-ml-4">
+            <div v-if="widget.widgetType == 'chart' || widget.widgetType == 'gauge'" class="tc-flex tc-items-center tc-ml-4">
               <div style="height: 21px">
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" class="tc-text-red-400" viewBox="0 0 20 20" fill="currentColor">
                   <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
@@ -148,11 +149,28 @@
           </div>
         </div>
         <!-- end fields -->
+        <!-- begin chart -->
         <div class="tc-col-span-6 tc-sm:col-span-6" :style="{display: widget.widgetType == 'chart' ? 'block' : 'none'}">
           <div class="tc-py-3">
             <canvas data-id="widget.id" ref="myChart"></canvas>
           </div>
         </div>
+        <!-- end chart -->
+        <!-- begin gauge -->
+        <div class="tc-col-span-6 tc-sm:col-span-6" :style="{display: widget.widgetType == 'gauge' ? 'block' : 'none'}">
+          <div class="tc-flex tc-justify-center">
+            <div class="tc-py-3 tc-flex tc-justify-center tc-items-center tc-flex-col">
+              <div>
+                <span class="tc-text-2xl tc-font-bold">{{ widgets[index].gaugeConfig.value }}</span>
+              </div>
+              <canvas data-id="widget.id" ref="gauge"></canvas>
+            </div>
+            <div>
+              <span class="tc-text-gray-400">Setting</span>
+            </div>
+          </div>
+        </div>
+        <!-- end gauge -->
       </div>
     </div>
   </div>
@@ -209,6 +227,10 @@
             labels: [],
             data: [],
           },
+          gaugeConfig: {
+            el: null,
+            value: null,
+          },
         });
       },
       subscribeWidget(index) {
@@ -263,6 +285,40 @@
           };
 
           this.widgets[index].chartConfig.el = new Chart(this.$refs.myChart[index], config);
+        } else if (this.widgets[index].widgetType == "gauge") {
+          setTimeout(() => {
+            const opts = {
+              angle: 0, // The span of the gauge arc
+              lineWidth: 0.44, // The line thickness
+              radiusScale: 1, // Relative radius
+              pointer: {
+                length: 0.6, // // Relative to gauge radius
+                strokeWidth: 0.035, // The thickness
+                color: "#000000", // Fill color
+              },
+              limitMax: false, // If false, max value increases automatically if value > maxValue
+              limitMin: false, // If true, the min value of the gauge will be fixed
+              staticZones: [
+                { strokeStyle: "#F44336", min: 0, max: 33 }, // Red
+                { strokeStyle: "#FDD835", min: 34, max: 66 }, // Yellow
+                { strokeStyle: "#4CAF50", min: 67, max: 100 }, // Green
+              ],
+              // colorStart: "#F44336", // Colors
+              // colorStop: "#4CAF50", // just experiment with them
+              strokeColor: "#E0E0E0", // to see which ones work best for you
+              generateGradient: true,
+              highDpiSupport: true, // High resolution support
+            };
+
+            let gauge = new Gauge(this.$refs.gauge[index]).setOptions(opts);
+            gauge.maxValue = 100; // set max gauge value
+            gauge.setMinValue(0); // Prefer setter over gauge.minValue = 0
+            gauge.animationSpeed = 32; // set animation speed (32 is default value)
+            gauge.set(0); // set actual value
+
+            this.widgets[index].gaugeConfig.el = gauge;
+            this.widgets[index].gaugeConfig.value = 0;
+          }, 3000);
         }
       },
     },
@@ -368,6 +424,10 @@
               if (widget.widgetType == "chart") {
                 widget.chartConfig.labels.push(moment().format("h:mm:ss a"));
                 widget.chartConfig.data.push(parseInt(messageObj.payload));
+              } else if (widget.widgetType == "gauge") {
+                const val = parseInt(messageObj.payload);
+                widget.gaugeConfig.el.set(val);
+                widget.gaugeConfig.value = val;
               } else {
                 widget.chartConfig.labels = [];
                 widget.chartConfig.data = [];

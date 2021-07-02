@@ -64,6 +64,7 @@ wp_enqueue_style('tailwind', '/wp-content/plugins/wp-netpie-plugin/templates/ass
 wp_enqueue_script('paho_mqtt', '/wp-content/plugins/wp-netpie-plugin/templates/assets/js/mqtt/mqttws31.js');
 wp_enqueue_script('moment', '/wp-content/plugins/wp-netpie-plugin/templates/assets/js/moment.min.js');
 wp_enqueue_script('chartjs', '/wp-content/plugins/wp-netpie-plugin/templates/assets/js/chart.min.js');
+wp_enqueue_script('gaugejs', 'https://bernii.github.io/gauge.js/dist/gauge.min.js');
 wp_enqueue_script('vue', '/wp-content/plugins/wp-netpie-plugin/templates/assets/js/vue.min.js');
 
 function netpie_dashboard_account_link($menu_links)
